@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPUI 侧栏拖拽交互方案与状态机原型</title>
+  <style>
+    :root {
+      --bg: #1e1e20;
+      --card-bg: #28282c;
+      --border: #38383e;
+      --text: #e0e0e4;
+      --text-muted: #8e8e96;
+      --accent: #5e6ad2;
+      --accent-hover: #4f59b6;
+      --hover: rgba(255, 255, 255, 0.04);
+      --active: rgba(255, 255, 255, 0.08);
+      --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    header h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    header p { color: var(--text-muted); font-size: 13px; }
+
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .tab-btn:hover:not(.active) {
+      background: var(--hover);
+      color: var(--text);
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* 侧栏样式模拟 GPUI 原生 */
+    .sidebar-mockup {
+      background: #232326;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      user-select: none;
+    }
+
+    .sidebar-header {
+      padding: 10px 12px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .tree-list {
+      padding: 4px 6px 12px;
+      min-height: 340px;
+      position: relative;
+    }
+
+    .tree-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--text);
+      cursor: grab;
+      transition: background 0.15s ease, transform 0.2s ease, opacity 0.2s ease;
+    }
+    .tree-item:active { cursor: grabbing; }
+    .tree-item:hover { background: var(--hover); }
+    .tree-item.selected { background: var(--active); }
+    .tree-item.indent-1 { padding-left: 24px; }
+    .tree-item.indent-2 { padding-left: 40px; }
+
+    .item-icon {
+      width: 14px;
+      height: 14px;
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+    .item-label {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 版本 1: 指示线 + 圆点 (Zed / GPUI 原生经典) */
+    .insertion-marker {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      height: 2px;
+      background: #6c78eb;
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+      transform: translateY(-50%);
+    }
+    .insertion-marker::before {
+      content: '';
+      position: absolute;
+      left: -2px;
+      top: -3px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #232326;
+      border: 2px solid #6c78eb;
+    }
+
+    /* 版本 2: 占位空位 (Ghost Slot) */
+    .ghost-slot {
+      height: 32px;
+      border: 1px dashed var(--accent);
+      background: rgba(94, 106, 210, 0.08);
+      border-radius: 4px;
+      margin: 2px 0;
+      display: none;
+      transition: all 0.2s ease;
+    }
+
+    /* 版本 3: 边缘发光 (Subtle Edge Highlight) */
+    .edge-highlight-top {
+      box-shadow: inset 0 2px 0 #6c78eb !important;
+    }
+    .edge-highlight-bottom {
+      box-shadow: inset 0 -2px 0 #6c78eb !important;
+    }
+    .folder-drop-hover {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+      background: rgba(94, 106, 210, 0.15) !important;
+    }
+
+    /* 拖拽中的浮动胶囊 */
+    .drag-ghost {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      background: #2d2d31;
+      border: 1px solid #484852;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3);
+      display: none;
+      color: #fff;
+      transform: translate(12px, 12px);
+    }
+
+    /* 右侧信息面板与 Canvas */
+    .info-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .info-panel h2 { font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(94, 106, 210, 0.2);
+      color: #8c98ff;
+      border: 1px solid rgba(94, 106, 210, 0.3);
+    }
+    .info-desc { font-size: 13px; color: #b0b0b8; margin-bottom: 16px; }
+
+    .canvas-container {
+      margin-top: 16px;
+      background: #1a1a1c;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+    canvas {
+      width: 100%;
+      height: 240px;
+      display: block;
+    }
+
+    .key-points {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .point-card {
+      background: #222226;
+      border: 1px solid #33333a;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .point-card strong { color: #fff; display: block; margin-bottom: 4px; }
+
+    .a11y-hint {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #888;
+      background: rgba(255,255,255,0.02);
+      padding: 8px 12px;
+      border-radius: 4px;
+      border-left: 3px solid var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>GPUI 侧栏拖拽排序组件方案与交互原型</h1>
+    <p>对比 3 种交互方案，配合 GPUI 底层 API（on_drag / on_drag_move / on_drop）与 Canvas 流程状态机</p>
+  </header>
+
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchVersion(1)">版本 1：精准吸附线 + 悬浮胶囊 (推荐 / Zed 官方同款)</button>
+    <button class="tab-btn" onclick="switchVersion(2)">版本 2：占位腾挪态 (Ghost Displacement / macOS Finder)</button>
+    <button class="tab-btn" onclick="switchVersion(3)">版本 3：轻量边缘高亮 (Subtle Edge Highlight / 极简模式)</button>
+  </div>
+
+  <div class="container">
+    <!-- 侧栏模拟器 -->
+    <div class="sidebar-mockup">
+      <div class="sidebar-header">
+        <span>Projects</span>
+        <span style="font-size: 10px; color: #666;">DRAG & DROP</span>
+      </div>
+      <div class="tree-list" id="treeList">
+        <!-- 由 JS 动态渲染 -->
+      </div>
+      <div class="sidebar-header" style="border-top: 1px solid #303036; margin-top: 8px;">
+        <span>Threads</span>
+      </div>
+      <div style="padding: 16px 12px; font-size: 12px; color: #666; text-align: center;">
+        No threads yet
+      </div>
+    </div>
+
+    <!-- 右侧方案说明与 Canvas 状态图 -->
+    <div class="info-panel">
+      <div id="versionDetails">
+        <!-- 动态注入说明 -->
+      </div>
+
+      <div class="canvas-container">
+        <div style="font-size: 12px; color: #888; margin-bottom: 8px; font-family: var(--font-mono);">
+          ▶ GPUI 拖拽状态转移图 (Canvas 实时交互流程)
+        </div>
+        <canvas id="flowCanvas" width="700" height="240"></canvas>
+      </div>
+
+      <div class="key-points" id="keyPoints">
+        <!-- 动态注入 -->
+      </div>
+
+      <div class="a11y-hint" id="a11yHint">
+        ♿ <strong>无障碍与键盘导航契约</strong>: 支持 <code>Space</code> / <code>Enter</code> 拾取，<code>↑</code> / <code>↓</code> 移动目标位置，<code>Enter</code> 确认放置，<code>Esc</code> 取消拖拽。无需依赖鼠标精准位移。
+      </div>
+    </div>
+  </div>
+
+  <div id="dragGhost" class="drag-ghost"></div>
+  <div id="insertionMarker" class="insertion-marker"></div>
+
+  <script>
+    let currentVersion = 1;
+    let items = [
+      { id: '1', title: 'diteng-hongmeng', type: 'folder', indent: 0 },
+      { id: '2', title: '修复鸿蒙 APP 登录页显示错误', type: 'task', indent: 1 },
+      { id: '3', title: 'goose-herdr', type: 'folder', indent: 0 },
+      { id: '4', title: 'Review herdr fixes for selective po...', type: 'task', indent: 1 },
+      { id: '5', title: 'ravenclaw', type: 'folder', indent: 0 },
+      { id: '6', title: 'goose-map', type: 'folder', indent: 0 }
+    ];
+
+    let draggedItem = null;
+    let dropTarget = null;
+    let dropPosition = null; // 'before', 'after', 'inside'
+
+    const treeList = document.getElementById('treeList');
+    const dragGhost = document.getElementById('dragGhost');
+    const marker = document.getElementById('insertionMarker');
+
+    const folderSvg = `<svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;
+    const taskSvg = `<svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>`;
+
+    function renderTree() {
+      treeList.innerHTML = '';
+      items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = `tree-item indent-${item.indent}`;
+        div.dataset.id = item.id;
+        div.draggable = true;
+        div.innerHTML = `
+          ${item.type === 'folder' ? folderSvg : taskSvg}
+          <span class="item-label">${item.title}</span>
+        `;
+
+        // 事件绑定
+        div.addEventListener('dragstart', (e) => handleDragStart(e, item));
+        div.addEventListener('dragover', (e) => handleDragOver(e, item, div));
+        div.addEventListener('dragleave', (e) => handleDragLeave(e, div));
+        div.addEventListener('drop', (e) => handleDrop(e, item));
+        div.addEventListener('dragend', handleDragEnd);
+
+        treeList.appendChild(div);
+      });
+    }
+
+    function handleDragStart(e, item) {
+      draggedItem = item;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', item.id);
+
+      // 自定义悬浮胶囊
+      dragGhost.innerText = item.title;
+      dragGhost.style.display = 'block';
+
+      // 隐藏原生半透明镜像
+      const img = new Image();
+      img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>';
+      e.dataTransfer.setDragImage(img, 0, 0);
+
+      document.addEventListener('dragover', updateGhostPos);
+      drawCanvasFlow('DRAGGING');
+    }
+
+    function updateGhostPos(e) {
+      if (dragGhost.style.display === 'block') {
+        dragGhost.style.left = e.clientX + 'px';
+        dragGhost.style.top = e.clientY + 'px';
+      }
+    }
+
+    function handleDragOver(e, targetItem, el) {
+      e.preventDefault();
+      if (!draggedItem || draggedItem.id === targetItem.id) return;
+
+      const rect = el.getBoundingClientRect();
+      const relY = e.clientY - rect.top;
+      const height = rect.height;
+
+      // 清除其他标记
+      clearVisualMarkers();
+
+      if (currentVersion === 1) {
+        // 版本 1: 吸附线 (上面、下面、或文件夹内)
+        marker.style.display = 'block';
+        if (targetItem.type === 'folder' && relY > height * 0.25 && relY < height * 0.75) {
+          dropPosition = 'inside';
+          marker.style.display = 'none';
+          el.classList.add('folder-drop-hover');
+        } else if (relY < height / 2) {
+          dropPosition = 'before';
+          marker.style.top = (el.offsetTop) + 'px';
+        } else {
+          dropPosition = 'after';
+          marker.style.top = (el.offsetTop + height) + 'px';
+        }
+      } else if (currentVersion === 2) {
+        // 版本 2: 占位槽
+        if (relY < height / 2) {
+          dropPosition = 'before';
+          el.style.transform = 'translateY(6px)';
+        } else {
+          dropPosition = 'after';
+          el.style.transform = 'translateY(-6px)';
+        }
+      } else if (currentVersion === 3) {
+        // 版本 3: 边缘高亮
+        if (targetItem.type === 'folder' && relY > height * 0.25 && relY < height * 0.75) {
+          dropPosition = 'inside';
+          el.classList.add('folder-drop-hover');
+        } else if (relY < height / 2) {
+          dropPosition = 'before';
+          el.classList.add('edge-highlight-top');
+        } else {
+          dropPosition = 'after';
+          el.classList.add('edge-highlight-bottom');
+        }
+      }
+
+      dropTarget = targetItem;
+      drawCanvasFlow('HOVERING');
+    }
+
+    function handleDragLeave(e, el) {
+      el.classList.remove('folder-drop-hover', 'edge-highlight-top', 'edge-highlight-bottom');
+      el.style.transform = '';
+    }
+
+    function handleDrop(e, targetItem) {
+      e.preventDefault();
+      if (!draggedItem || draggedItem.id === targetItem.id) return;
+
+      const dragIndex = items.findIndex(i => i.id === draggedItem.id);
+      items.splice(dragIndex, 1);
+
+      let targetIndex = items.findIndex(i => i.id === targetItem.id);
+
+      if (dropPosition === 'inside') {
+        draggedItem.indent = 1;
+        items.splice(targetIndex + 1, 0, draggedItem);
+      } else if (dropPosition === 'before') {
+        draggedItem.indent = targetItem.indent;
+        items.splice(targetIndex, 0, draggedItem);
+      } else {
+        draggedItem.indent = targetItem.indent;
+        items.splice(targetIndex + 1, 0, draggedItem);
+      }
+
+      clearVisualMarkers();
+      renderTree();
+      drawCanvasFlow('DROPPED');
+    }
+
+    function handleDragEnd() {
+      draggedItem = null;
+      dropTarget = null;
+      dropPosition = null;
+      dragGhost.style.display = 'none';
+      clearVisualMarkers();
+      document.removeEventListener('dragover', updateGhostPos);
+      drawCanvasFlow('IDLE');
+    }
+
+    function clearVisualMarkers() {
+      marker.style.display = 'none';
+      document.querySelectorAll('.tree-item').forEach(el => {
+        el.classList.remove('folder-drop-hover', 'edge-highlight-top', 'edge-highlight-bottom');
+        el.style.transform = '';
+      });
+    }
+
+    function switchVersion(v) {
+      currentVersion = v;
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', i + 1 === v);
+      });
+      clearVisualMarkers();
+      updateDetails();
+      drawCanvasFlow('IDLE');
+    }
+
+    const versionContent = {
+      1: {
+        title: "版本 1：精准吸附指示线 + 浮动胶囊",
+        badge: "推荐 · Zed 官方原生基准",
+        desc: "完全对应 Zed / GPUI 官方截图与交互模式。在目标项边缘渲染带实心/空心圆点的高亮水平参考线，并在鼠标光标后跟随轻量半透明浮动胶囊。进入文件夹中间区域时激活文件夹框选态（转换为子项）。",
+        points: [
+          { title: "GPUI 对应机制", desc: "cx.new(|_| DragPreview) 生成浮动胶囊；on_drag_move 动态更新 target_id 和 after，并在 Paint 阶段绘制线段和圆点。" },
+          { title: "优势与无障碍", desc: "像素级清晰的插入点视觉反馈，不改变既有列表高度，无视觉晃动；完全符合 macOS 原生紧凑排版契约。" }
+        ]
+      },
+      2: {
+        title: "版本 2：占位腾挪态 (Ghost Displacement)",
+        badge: "macOS Finder / iOS 列表风格",
+        desc: "拖拽悬停时，列表项通过 CSS Transform (GPUI 中通过 bounds 偏移) 向上或向下平滑腾出一条空位插槽。用户直观看到放置后的布局结果。",
+        points: [
+          { title: "GPUI 对应机制", desc: "需要在 on_drag_move 中通知父级 View 重新计算插槽高度与平移动画，重绘开销稍大。" },
+          { title: "适用场景与取舍", desc: "直观友好，但在高密度紧凑列表（如 GPUI 侧栏）中，频繁挤开条目会导致视觉跳跃，长列表滚动时易误触。" }
+        ]
+      },
+      3: {
+        title: "版本 3：轻量边缘高亮 (Subtle Edge Highlight)",
+        badge: "极简高性能模式",
+        desc: "不渲染额外的圆点参考线和占位插槽，直接在目标 Item 的上边框或下边框应用 2px 的强调色发光，适合追求极简性能或极窄侧栏。",
+        points: [
+          { title: "GPUI 对应机制", desc: "仅在 item.render() 时判定自身是否为 object_drop 目标，并在 border_t / border_b 动态着色。" },
+          { title: "适用场景与取舍", desc: "代码量最少，但没有圆点指引，在层级较深的子代理树中容易分不清层级缩进归属。" }
+        ]
+      }
+    };
+
+    function updateDetails() {
+      const data = versionContent[currentVersion];
+      document.getElementById('versionDetails').innerHTML = `
+        <h2>${data.title} <span class="badge">${data.badge}</span></h2>
+        <p class="info-desc">${data.desc}</p>
+      `;
+
+      document.getElementById('keyPoints').innerHTML = data.points.map(p => `
+        <div class="point-card">
+          <strong>${p.title}</strong>
+          ${p.desc}
+        </div>
+      `).join('');
+    }
+
+    // 绘制 Canvas 状态机流程
+    function drawCanvasFlow(activeState) {
+      const canvas = document.getElementById('flowCanvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const states = [
+        { id: 'IDLE', name: '1. 静止 (Idle)', desc: '普通列表渲染', x: 80, y: 120 },
+        { id: 'DRAGGING', name: '2. 拖拽中 (Dragging)', desc: '生成 ObjectDrag 胶囊', x: 260, y: 120 },
+        { id: 'HOVERING', name: '3. 悬停目标 (Target Hover)', desc: '计算 before/after/inside', x: 460, y: 120 },
+        { id: 'DROPPED', name: '4. 放置 (Drop/Commit)', desc: '执行 reorder 并持久化', x: 620, y: 120 }
+      ];
+
+      // 连线
+      ctx.strokeStyle = '#383842';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < states.length - 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(states[i].x + 40, states[i].y);
+        ctx.lineTo(states[i+1].x - 40, states[i+1].y);
+        ctx.stroke();
+
+        // 箭头
+        ctx.fillStyle = '#383842';
+        ctx.beginPath();
+        ctx.arc(states[i+1].x - 40, states[i+1].y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 回归线
+      ctx.beginPath();
+      ctx.strokeStyle = '#2d2d38';
+      ctx.setLineDash([4, 4]);
+      ctx.moveTo(states[3].x, states[3].y - 35);
+      ctx.quadraticCurveTo(w/2, 20, states[0].x, states[0].y - 35);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 节点
+      states.forEach(s => {
+        const isActive = s.id === activeState;
+        ctx.fillStyle = isActive ? '#5e6ad2' : '#232328';
+        ctx.strokeStyle = isActive ? '#8c98ff' : '#383842';
+        ctx.lineWidth = isActive ? 2 : 1;
+
+        ctx.beginPath();
+        ctx.roundRect(s.x - 55, s.y - 30, 110, 60, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isActive ? '#ffffff' : '#d0d0d8';
+        ctx.font = 'bold 11px ' + getComputedStyle(document.body).fontFamily;
+        ctx.textAlign = 'center';
+        ctx.fillText(s.name, s.x, s.y - 6);
+
+        ctx.fillStyle = isActive ? '#e0e0ff' : '#888892';
+        ctx.font = '10px ' + getComputedStyle(document.body).fontFamily;
+        ctx.fillText(s.desc, s.x, s.y + 12);
+      });
+    }
+
+    // 初始化
+    renderTree();
+    updateDetails();
+    drawCanvasFlow('IDLE');
+  </script>
+</body>
+</html>

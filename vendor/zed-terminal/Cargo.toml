@@ -1,0 +1,23 @@
+[package]
+name = "zed-terminal"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "GPL-3.0-or-later"
+
+[dependencies]
+alacritty_terminal = "=0.26.0"
+anyhow = "1"
+futures = "0.3"
+gpui = { version = "=0.2.2", default-features = false }
+itertools = "0.14"
+log = "=0.4.34"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+smol = "2"
+urlencoding = "2"
+
+# Already present in Cargo.lock through GPUI/Alacritty.
+base64 = "=0.22.1"
+image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+polling = "=3.11.0"
