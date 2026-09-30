@@ -1,6 +1,6 @@
 # GPUI 相对 goose-herdr 缺口补齐计划
 
-2026-09-18 源码对照。源：`/Users/eachann/Work/goose-herdr`；目标：`/Users/eachann/Work/goose-herdr-gpui`。本文件是当前实施入口；`final-plan.md` 是迁移前选型快照。
+2026-09-18 源码对照。源：`/Users/eachann/Work/goose-herdr`；目标：`/Users/eachann/Work/goose-herdr-gpui`。本文件是当前实施入口。
 
 验收：`cargo build --locked` 成功即通过。不宣称真实 daemon / 远端会话 / Keychain / 通知已运行验证。
 
