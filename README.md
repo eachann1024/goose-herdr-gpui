@@ -4,11 +4,7 @@ Goose Herdr 的 macOS Rust/GPUI 客户端。终端改用固定版本的 **Zed �
 
 ## 视频介绍
 
-[![中文产品介绍视频](docs/media/product-intro-cover.png)](https://github.com/eachann1024/goose-herdr-gpui/raw/refs/heads/main/docs/media/product-intro-zh.mp4)
-
-[观看／下载 MP4](https://github.com/eachann1024/goose-herdr-gpui/raw/refs/heads/main/docs/media/product-intro-zh.mp4) · 中文旁白 · 1080p · 42.8 秒
-
-**历史交互原型·模拟数据·2026-09-18**。展示项目与会话选择、命令面板查看、明暗主题和模拟分栏。使用固定提交 `72e7d06bacb477a007862732cef80b9a0e9103fd` 中的历史 HTML 原型；未启动 GPUI 原生客户端或进行真实远程连接。
+https://github.com/user-attachments/assets/4e1b464f-9ab5-42a0-a888-820aeb9f13ba
 
 ## 构建
 
