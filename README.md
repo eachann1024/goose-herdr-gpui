@@ -4,7 +4,9 @@ Goose Herdr 的 macOS Rust/GPUI 客户端。终端改用固定版本的 **Zed �
 
 ## 视频介绍
 
-https://github.com/user-attachments/assets/e1acea24-3cde-46bb-918b-f73ddf6f38d3
+https://github.com/user-attachments/assets/0e9bd3ab-c086-4d86-8d15-3282e2ee5866
+
+这是在云电脑 Linux 上的真实录屏：应用的目标平台是 macOS，为了能在 Linux 上运行，录制时把钥匙串、通知等 macOS 专有能力换成了空实现，该改动仅用于录制，未进入本仓库。片中如实标出了已完成与还在做的部分，其中真实 Herdr 服务、远端会话、钥匙串、通知与用量尚未做端到端验收。
 
 ## 构建
 
