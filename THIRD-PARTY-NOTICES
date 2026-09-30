@@ -1,0 +1,24 @@
+THIRD-PARTY NOTICES / 第三方许可说明
+
+本仓库的自有代码以 MIT 许可证发布，见顶层 LICENSE
+（Copyright (c) 2026 eachann1024）。
+
+vendor/ 目录下的第三方代码不属于上述 MIT 授权范围，保持其各自的原许可证与
+版权声明，未做任何许可证变更：
+
+1. vendor/zed-terminal（提取自 Zed）
+   - 上游：https://github.com/zed-industries/zed （固定修订见 vendor/zed-terminal/SOURCES.md）
+   - 许可证：GPL-3.0-or-later，全文见 vendor/zed-terminal/LICENSE-GPL
+   - 版权：Zed Industries, Inc. 及贡献者
+
+2. vendor/zed-terminal/src/event_loop.rs（改编自 alacritty_terminal 0.26.0）
+   - 许可证：Apache-2.0，全文见 vendor/zed-terminal/LICENSE-APACHE-ALACRITTY
+   - 版权：Alacritty 项目及贡献者
+
+3. resources/icons、resources/licenses 下的图标与组件
+   - 来源与许可见 resources/icons/LICENSES、resources/icons/SOURCES.md、
+     resources/licenses/gpui-component/
+
+重要提示：包含 GPL-3.0-or-later 代码（vendor/zed-terminal）的编译产物，作为
+整体分发时须按 GPL-3.0-or-later 提供对应源码并保留声明；顶层 MIT 许可证不会
+改变这一点。详见 vendor/zed-terminal/SOURCES.md。

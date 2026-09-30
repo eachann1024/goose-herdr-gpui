@@ -79,3 +79,7 @@ open "/Users/eachann/Work/goose-herdr-gpui/dist/repair/Goose Herdr GPUI.app"
 本机全局 Cargo 镜像配置干扰构建，本轮统一构建使用隔离的 `CARGO_HOME`（`/tmp/goose-herdr-cargo-home`）从 `/tmp` 执行带 `--manifest-path /Users/eachann/Work/goose-herdr-gpui/Cargo.toml` 的离线构建；这是本机环境规避，不是项目对该临时目录的依赖。正常环境使用上面的标准命令。
 
 旧窗口不会由构建过程退出；打开修复包前先自行退出旧 GPUI 应用，以免 macOS 复用仍运行的旧进程。没有安装覆盖旧版，没有迁移共享 daemon 或用户数据。
+
+## 许可
+
+自有代码以 [MIT 许可证](LICENSE) 开源，版权所有 © 2026 eachann1024。`vendor/` 下第三方代码（含 GPL-3.0-or-later 的 `vendor/zed-terminal`）保持其原许可证，不适用 MIT；详见 [THIRD-PARTY-NOTICES](THIRD-PARTY-NOTICES)。包含该 GPL 代码的二进制分发须遵守 GPL-3.0-or-later 要求。
