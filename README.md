@@ -2,6 +2,14 @@
 
 Goose Herdr 的 macOS Rust/GPUI 客户端。终端改用固定版本的 **Zed 终端核心与批量网格渲染代码**（`vendor/zed-terminal`），替换原自研 PTY 读取、输入编码和逐格绘制；Herdr 会话、SSH、分栏及配置由宿主适配。不是原封不动嵌入 Zed 的完整 `terminal_view` crate。来源、修改边界及 GPL-3.0-or-later 许可见 [`vendor/zed-terminal/SOURCES.md`](vendor/zed-terminal/SOURCES.md)。不包含 Goose Hub 的商店和组件宿主（S2）。`planning/` 保留历史方案，其中 TA 原创终端方案已被本次选择取代。
 
+## 视频介绍
+
+[![中文产品介绍视频](docs/media/product-intro-cover.png)](https://github.com/eachann1024/goose-herdr-gpui/raw/refs/heads/main/docs/media/product-intro-zh.mp4)
+
+[观看／下载 MP4](https://github.com/eachann1024/goose-herdr-gpui/raw/refs/heads/main/docs/media/product-intro-zh.mp4) · 中文旁白 · 1080p · 42.8 秒
+
+**历史交互原型·模拟数据·2026-09-18**。展示项目与会话选择、命令面板查看、明暗主题和模拟分栏。使用固定提交 `72e7d06bacb477a007862732cef80b9a0e9103fd` 中的历史 HTML 原型；未启动 GPUI 原生客户端或进行真实远程连接。
+
 ## 构建
 
 需要 macOS、Rust/Cargo、Xcode Command Line Tools，以及原 Goose Herdr 源码中的 Tailcat 静态制品。依赖版本见 `Cargo.lock`。
