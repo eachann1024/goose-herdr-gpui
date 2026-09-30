@@ -4,7 +4,7 @@ Goose Herdr 的 macOS Rust/GPUI 客户端。终端改用固定版本的 **Zed �
 
 ## 视频介绍
 
-https://github.com/user-attachments/assets/4e1b464f-9ab5-42a0-a888-820aeb9f13ba
+https://github.com/user-attachments/assets/e1acea24-3cde-46bb-918b-f73ddf6f38d3
 
 ## 构建
 
