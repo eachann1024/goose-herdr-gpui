@@ -55,6 +55,14 @@ bundle="$staging/Goose herdr GPUI.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$binary" "$bundle/Contents/MacOS/goose-herdr-gpui"
 cp "$root/resources/Info.plist" "$bundle/Contents/Info.plist"
+zh_strings="$root/resources/zh-Hans.lproj/InfoPlist.strings"
+en_strings="$root/resources/en.lproj/InfoPlist.strings"
+for lang in zh-Hans zh_CN zh-Hans-CN; do
+  mkdir -p "$bundle/Contents/Resources/$lang.lproj"
+  cp "$zh_strings" "$bundle/Contents/Resources/$lang.lproj/InfoPlist.strings"
+done
+mkdir -p "$bundle/Contents/Resources/en.lproj"
+cp "$en_strings" "$bundle/Contents/Resources/en.lproj/InfoPlist.strings"
 icon_src="$source_root/Sources/GooseAgent/AppIcon.icon"
 [[ -f "$icon_src/icon.json" ]] || { echo "Missing app icon: $icon_src" >&2; exit 1; }
 xcrun actool "$icon_src" --compile "$bundle/Contents/Resources" \
