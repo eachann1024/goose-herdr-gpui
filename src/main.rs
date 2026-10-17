@@ -151,7 +151,7 @@ fn main() {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     window_min_size: Some(size(px(720.), px(480.))),
                     titlebar: Some(TitlebarOptions {
-                        title: Some("Goose herdr GPUI".into()),
+                        title: Some(i18n::tr("鹅的 Herdr").into()),
                         appears_transparent: true,
                         traffic_light_position: Some(point(px(12.), px(7.))),
                     }),
@@ -164,7 +164,7 @@ fn main() {
                 },
             );
             if let Err(error) = result {
-                eprintln!("{}：{error}", i18n::tr("无法打开 Goose herdr GPUI 窗口"));
+                eprintln!("{}：{error}", i18n::tr("无法打开鹅的 Herdr 窗口"));
                 cx.quit();
                 return;
             }
@@ -244,12 +244,12 @@ pub fn set_menus(cx: &mut App) {
     ));
     cx.set_menus(vec![
         Menu {
-            name: i18n::tr("Goose herdr GPUI").into(),
+            name: i18n::tr("鹅的 Herdr").into(),
             items: vec![
                 MenuItem::action(i18n::tr("设置…"), app::OpenSettings),
                 MenuItem::os_submenu(i18n::tr("服务"), SystemMenuType::Services),
                 MenuItem::separator(),
-                MenuItem::action(i18n::tr("退出 Goose herdr GPUI"), Quit),
+                MenuItem::action(i18n::tr("退出鹅的 Herdr"), Quit),
             ],
         },
         Menu {
